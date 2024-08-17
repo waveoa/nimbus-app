@@ -105,7 +105,7 @@ Please ensure your code follows the project's coding guidelines and passes all t
 
 ## License
 
-Nimbus is open-source software licensed under the Apache-2.0 License. See the [LICENSE](LICENSE) file for more details.
+Nimbus is open-source software licensed under the Apache-2.0 License. See the [LICENSE](LICENSE.md) file for more details.
 
 ---
 
