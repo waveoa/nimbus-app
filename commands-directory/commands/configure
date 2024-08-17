@@ -1,0 +1,86 @@
+// Load environment variables from .env file
+require('dotenv').config({ path: './Nimbus/.env' });
+
+const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+
+// Retrieve environment variables
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
+const guildId = process.env.GUILD_ID;
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+
+const rest = new REST({ version: '10' }).setToken(token);
+
+(async () => {
+    try {
+        console.log('Started refreshing application (/) commands.');
+
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+            body: [
+                {
+                    name: 'configure',
+                    description: 'Configure the bot with embed and buttons',
+                },
+            ],
+        });
+
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
+})();
+
+client.on('interactionCreate', async interaction => {
+    if (interaction.isCommand()) {
+        const { commandName } = interaction;
+
+        if (commandName === 'configure') {
+            const embed = new EmbedBuilder()
+                .setTitle('Bot Configuration')
+                .setDescription('Choose an action below:')
+                .setColor('#0099ff');
+
+            const deactiveButton = new ButtonBuilder()
+                .setCustomId('deactive')
+                .setLabel('Deactivate')
+                .setStyle(ButtonStyle.Danger);
+
+            const reloadButton = new ButtonBuilder()
+                .setCustomId('reload')
+                .setLabel('Reload')
+                .setStyle(ButtonStyle.Primary);
+
+            const row = new ActionRowBuilder().addComponents(deactiveButton, reloadButton);
+
+            await interaction.reply({ embeds: [embed], components: [row] });
+        }
+    } else if (interaction.isButton()) {
+        const { customId } = interaction;
+
+        if (customId === 'deactive') {
+            await interaction.reply({ content: 'Deactivating the bot...', ephemeral: true });
+
+            // Delete every message sent by the bot in the server
+            const messages = await interaction.channel.messages.fetch();
+            const botMessages = messages.filter(msg => msg.author.id === client.user.id);
+            await Promise.all(botMessages.map(msg => msg.delete()));
+
+            // Leave the server
+            await interaction.guild.leave();
+
+            // Optionally, you can also delete the bot’s application data, if necessary
+        } else if (customId === 'reload') {
+            await interaction.reply({ content: 'Reloading...', ephemeral: true });
+
+            // Reload commands, profile picture, and banner
+            // Note: Reloading commands would generally require re-registering commands and restarting the bot
+            // Reloading profile picture and banner is not supported directly via API and might need manual intervention
+
+            // Send a confirmation message (optional)
+            await interaction.followUp({ content: 'Bot reloaded!', ephemeral: true });
+        }
+    }
+});
+
+client.login(token);
