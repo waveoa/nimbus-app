@@ -1,0 +1,95 @@
+const { exec } = require('child_process');
+const simpleGit = require('simple-git');
+const path = require('path');
+const fs = require('fs');
+const dotenv = require('dotenv');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const git = simpleGit();
+
+// Load environment variables from the .env file
+dotenv.config({ path: path.resolve(__dirname, 'nimbus/.env') });
+
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+});
+
+// Function to start the bot
+const startBot = () => {
+    client.commands = new Collection();
+
+    const commandsPath = path.resolve(__dirname, 'nimbus-app/commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+    for (const file of commandFiles) {
+        const filePath = path.join(commandsPath, file);
+        const command = require(filePath);
+        client.commands.set(command.name, command);
+    }
+
+    client.once('ready', () => {
+        console.log(`Logged in as ${client.user.tag}!`);
+    });
+
+    client.on('messageCreate', message => {
+        if (!message.content.startsWith('!') || message.author.bot) return;
+
+        const args = message.content.slice(1).trim().split(/ +/);
+        const commandName = args.shift().toLowerCase();
+
+        const command = client.commands.get(commandName);
+
+        if (!command) return;
+
+        try {
+            command.execute(message, args);
+        } catch (error) {
+            console.error(error);
+            message.reply('There was an error trying to execute that command!');
+        }
+    });
+
+    // Use the token from the .env file
+    const token = process.env.DISCORD_TOKEN;
+    if (!token) {
+        console.error('No DISCORD_TOKEN found in .env file');
+        process.exit(1);
+    }
+
+    client.login(token);
+};
+
+// Function to pull the latest code from the GitHub repository
+const pullLatestCode = () => {
+    const repoUrl = 'https://github.com/waveoa/nimbus-app.git';
+    const localPath = path.resolve(__dirname, 'nimbus-app');
+
+    git.clone(repoUrl, localPath, { '--single-branch': null }, (err) => {
+        if (err) {
+            if (err.message.includes('already exists and is not an empty directory')) {
+                console.log('Repository already cloned. Pulling latest changes...');
+                git.cwd(localPath)
+                    .pull((pullErr) => {
+                        if (pullErr) {
+                            console.error('Failed to pull the latest code:', pullErr);
+                        } else {
+                            console.log('Pulled the latest code.');
+                            startBot();
+                        }
+                    });
+            } else {
+                console.error('Failed to clone the repository:', err);
+            }
+        } else {
+            console.log('Repository cloned.');
+            startBot();
+        }
+    });
+};
+
+// Watch for the command and execute the appropriate action
+const command = process.argv[2];
+if (command === 'start') {
+    pullLatestCode();
+} else {
+    console.log('Unknown command. Use "npm start start" to start the bot.');
+}

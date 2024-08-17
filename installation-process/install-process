@@ -1,0 +1,16 @@
+// Load environment variables from the .env file
+require('dotenv').config();
+
+// Import the Discord.js module
+const { Client, GatewayIntentBits } = require('discord.js');
+
+// Create a new Discord client instance
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// When the client is ready, run this code (only once)
+client.once('ready', () => {
+    console.log('Bot is online and ready!');
+});
+
+// Log in to Discord with the bot token from the .env file
+client.login(process.env.DISCORD_TOKEN);
