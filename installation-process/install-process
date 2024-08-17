@@ -1,16 +1,36 @@
-// Load environment variables from the .env file
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+const simpleGit = require('simple-git');
+const cloneOrUpdateRepo = require('./cloneOrUpdateRepo');
 
-// Import the Discord.js module
-const { Client, GatewayIntentBits } = require('discord.js');
+const REPO_DIR = path.resolve(__dirname, 'nimbus-app');
+const COMMANDS_DIR = path.join(REPO_DIR, 'commands');
 
-// Create a new Discord client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const git = simpleGit(REPO_DIR);
 
-// When the client is ready, run this code (only once)
-client.once('ready', () => {
-    console.log('Bot is online and ready!');
-});
+async function addFilesToRepo() {
+  try {
+    // Add all files in the commands directory
+    await git.add([`${COMMANDS_DIR}/*`]);
+    await git.commit('Add commands files');
+    await git.push('origin', 'main');
+    console.log('Files added and pushed to repository.');
+  } catch (error) {
+    console.error('Error adding files to repository:', error);
+    process.exit(1);
+  }
+}
 
-// Log in to Discord with the bot token from the .env file
-client.login(process.env.DISCORD_TOKEN);
+async function installProcess() {
+  await cloneOrUpdateRepo();
+
+  if (!fs.existsSync(COMMANDS_DIR)) {
+    console.error('Commands directory does not exist.');
+    process.exit(1);
+  }
+
+  // Commit and push files to the repository
+  await addFilesToRepo();
+}
+
+installProcess();
