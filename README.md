@@ -44,7 +44,7 @@ Before installing Nimbus, make sure you have the following installed on your mac
 To clone the Nimbus repository, open your terminal and run the following command:
 
 ```bash
-git clone https://github.com/yourusername/Nimbus.git
+git clone https://github.com/waveoa/nimbus-app.git
 ```
 
 Replace `yourusername` with the actual GitHub username or organization that hosts the repository.
