@@ -1,0 +1,31 @@
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Function to change the directory to "Nimbus" and list its contents.
+function grabNimbus() {
+  const targetDirectory = 'Nimbus';
+
+  // Check if the target directory exists.
+  if (fs.existsSync(targetDirectory) && fs.lstatSync(targetDirectory).isDirectory()) {
+    // Change the current working directory to "Nimbus"
+    process.chdir(targetDirectory);
+
+    // List all files and directories in the "Nimbus" directory.
+    fs.readdir('.', (err, files) => {
+      if (err) {
+        console.error(`Error reading directory: ${err.message}`);
+      } else {
+        console.log(`Contents of ${targetDirectory}:`);
+        files.forEach(file => {
+          console.log(file);
+        });
+      }
+    });
+  } else {
+    console.error(`Directory "${targetDirectory}" does not exist.`);
+  }
+}
+
+// Execute the grabNimbus function.
+grabNimbus();

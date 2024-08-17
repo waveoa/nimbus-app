@@ -1,0 +1,33 @@
+const { exec } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+// Define the directory name where the repo will be cloned.
+const dirName = 'Nimbus';
+
+// Create the directory if it doesn't exist.
+if (!fs.existsSync(dirName)) {
+    fs.mkdirSync(dirName);
+}
+
+// Define the full path for the directory.
+const fullPath = path.join(__dirname, dirName);
+
+// Git clone command
+const gitCloneCommand = `git clone https://github.com/waveoa/nimbus-app.git ${fullPath}`;
+
+// Execute the git clone command.
+exec(gitCloneCommand, (error, stdout, stderr) => {
+    if (error) {
+        console.error(`Error executing command: ${error.message}`);
+        return;
+    }
+
+    if (stderr) {
+        console.error(`Error: ${stderr}`);
+        return;
+    }
+
+    console.log(`Output: ${stdout}`);
+    console.log('Nimbus repository has been cloned successfully!');
+});
