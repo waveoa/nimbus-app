@@ -47,8 +47,6 @@ To clone the Nimbus repository, open your terminal and run the following command
 git clone https://github.com/waveoa/nimbus-app.git
 ```
 
-Replace `yourusername` with the actual GitHub username or organization that hosts the repository.
-
 Navigate into the cloned directory:
 
 ```bash
