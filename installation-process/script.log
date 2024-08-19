@@ -1,0 +1,42 @@
+[2024-08-19T04:21:09.691Z] [INFO] Starting the script...
+[2024-08-19T04:21:09.704Z] [WARNING] Configuration file 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\config.json' not found. Proceeding with defaults.
+[2024-08-19T04:21:09.707Z] [INFO] Operating System: Windows_NT 10.0.22631 (win32)
+[2024-08-19T04:21:09.710Z] [INFO] CPU: AMD Athlon 300GE with Radeon Vega Graphics     
+[2024-08-19T04:21:09.713Z] [INFO] Total Memory: 7.93 GB
+[2024-08-19T04:21:09.714Z] [INFO] Repository URL 'https://github.com/waveoa/nimbus-app.git' is valid.
+[2024-08-19T04:21:09.716Z] [WARNING] Environment variable 'REPO_URL' is not set. Prompting user for input...
+[2024-08-19T04:21:09.718Z] [INFO] Directory 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' is available.
+[2024-08-19T04:21:09.722Z] [INFO] Directory 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' created successfully.
+[2024-08-19T04:21:09.724Z] [INFO] Attempting to clone repository from https://github.com/waveoa/nimbus-app.git to C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus...
+[2024-08-19T04:21:09.765Z] [INFO] Script finished.
+[2024-08-19T04:21:11.567Z] [ERROR] Git error: Cloning into 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus'...
+
+[2024-08-19T04:21:18.290Z] [INFO] Starting the script...
+[2024-08-19T04:21:18.308Z] [WARNING] Configuration file 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\config.json' not found. Proceeding with defaults.
+[2024-08-19T04:21:18.310Z] [INFO] Operating System: Windows_NT 10.0.22631 (win32)
+[2024-08-19T04:21:18.316Z] [INFO] CPU: AMD Athlon 300GE with Radeon Vega Graphics     
+[2024-08-19T04:21:18.318Z] [INFO] Total Memory: 7.93 GB
+[2024-08-19T04:21:18.319Z] [INFO] Repository URL 'https://github.com/waveoa/nimbus-app.git' is valid.
+[2024-08-19T04:21:18.321Z] [WARNING] Environment variable 'REPO_URL' is not set. Prompting user for input...
+[2024-08-19T04:21:18.323Z] [WARNING] Directory 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' already exists.
+[2024-08-19T04:21:18.325Z] [INFO] Attempting to clone repository from https://github.com/waveoa/nimbus-app.git to C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus...
+[2024-08-19T04:21:18.384Z] [INFO] Script finished.
+[2024-08-19T04:21:18.591Z] [ERROR] Error executing command: Command failed: git clone https://github.com/waveoa/nimbus-app.git C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus
+fatal: destination path 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' already exists and is not an empty directory.
+
+[2024-08-19T04:21:18.592Z] [INFO] Retrying... (3 retries left)
+[2024-08-19T04:21:18.593Z] [INFO] Attempting to clone repository from https://github.com/waveoa/nimbus-app.git to C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus...
+[2024-08-19T04:21:18.844Z] [ERROR] Error executing command: Command failed: git clone https://github.com/waveoa/nimbus-app.git C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus
+fatal: destination path 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' already exists and is not an empty directory.
+
+[2024-08-19T04:21:18.845Z] [INFO] Retrying... (2 retries left)
+[2024-08-19T04:21:18.847Z] [INFO] Attempting to clone repository from https://github.com/waveoa/nimbus-app.git to C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus...
+[2024-08-19T04:21:18.967Z] [ERROR] Error executing command: Command failed: git clone https://github.com/waveoa/nimbus-app.git C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus
+fatal: destination path 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' already exists and is not an empty directory.
+
+[2024-08-19T04:21:18.968Z] [INFO] Retrying... (1 retries left)
+[2024-08-19T04:21:18.970Z] [INFO] Attempting to clone repository from https://github.com/waveoa/nimbus-app.git to C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus...
+[2024-08-19T04:21:19.094Z] [ERROR] Error executing command: Command failed: git clone https://github.com/waveoa/nimbus-app.git C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus
+fatal: destination path 'C:\Users\sanne\Documents\GitHub\nimbus-app\installation-process\Nimbus' already exists and is not an empty directory.
+
+[2024-08-19T04:21:19.096Z] [ERROR] Max retries reached. Exiting script.

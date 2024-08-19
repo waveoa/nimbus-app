@@ -1,33 +1,387 @@
+// Import necessary modules
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const readline = require('readline');
+const os = require('os');
+const crypto = require('crypto');
+const https = require('https');
 
-// Define the directory name where the repo will be cloned.
-const dirName = 'Nimbus';
+// Initialize readline interface for user prompts
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
-// Create the directory if it doesn't exist.
-if (!fs.existsSync(dirName)) {
-    fs.mkdirSync(dirName);
+// Log file for detailed logging
+const logFilePath = path.join(__dirname, 'script.log');
+
+// Function to log messages with a timestamp
+function logMessage(message, type = 'INFO') {
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] [${type}] ${message}\n`;
+    console.log(logEntry.trim());
+    fs.appendFileSync(logFilePath, logEntry);
 }
 
-// Define the full path for the directory.
-const fullPath = path.join(__dirname, dirName);
+// Function to generate a unique identifier for session tracking
+function generateSessionId() {
+    return crypto.randomBytes(16).toString('hex');
+}
 
-// Git clone command
-const gitCloneCommand = `git clone https://github.com/waveoa/nimbus-app.git ${fullPath}`;
+const sessionId = generateSessionId();
+logMessage(`Session ID: ${sessionId}`, 'INFO');
 
-// Execute the git clone command.
-exec(gitCloneCommand, (error, stdout, stderr) => {
-    if (error) {
-        console.error(`Error executing command: ${error.message}`);
-        return;
+// Function to create a directory if it doesn't exist
+function createDirectory(directoryName) {
+    try {
+        if (!fs.existsSync(directoryName)) {
+            fs.mkdirSync(directoryName, { recursive: true });
+            logMessage(`Directory '${directoryName}' created successfully.`);
+        } else {
+            logMessage(`Directory '${directoryName}' already exists.`);
+        }
+    } catch (error) {
+        logMessage(`Failed to create directory '${directoryName}': ${error.message}`, 'ERROR');
+        process.exit(1);
+    }
+}
+
+// Function to clone a Git repository with retry mechanism
+function cloneRepository(repositoryUrl, destinationPath, retries = 3) {
+    const gitCloneCommand = `git clone ${repositoryUrl} ${destinationPath}`;
+    logMessage(`Attempting to clone repository from ${repositoryUrl} to ${destinationPath}...`);
+
+    exec(gitCloneCommand, (error, stdout, stderr) => {
+        if (error) {
+            logMessage(`Error executing command: ${error.message}`, 'ERROR');
+            if (retries > 0) {
+                logMessage(`Retrying... (${retries} retries left)`);
+                return cloneRepository(repositoryUrl, destinationPath, retries - 1);
+            } else {
+                logMessage('Max retries reached. Exiting script.', 'ERROR');
+                process.exit(1);
+            }
+        }
+
+        if (stderr) {
+            logMessage(`Git error: ${stderr}`, 'ERROR');
+            process.exit(1);
+        }
+
+        logMessage(`Repository has been cloned successfully!\n${stdout}`);
+    });
+}
+
+// Function to check for environment variables and prompt the user if necessary
+function checkEnvironmentVariables(envVarName) {
+    const envValue = process.env[envVarName];
+    if (!envValue) {
+        logMessage(`Environment variable '${envVarName}' is not set. Prompting user for input...`, 'WARNING');
+        rl.question(`Please enter the value for ${envVarName}: `, (answer) => {
+            process.env[envVarName] = answer;
+            rl.close();
+            logMessage(`Environment variable '${envVarName}' set to '${answer}'.`);
+        });
+    } else {
+        logMessage(`Environment variable '${envVarName}' is already set.`);
+    }
+}
+
+// Function to validate the URL of the repository
+function validateRepositoryUrl(repositoryUrl) {
+    const urlRegex = /^(https?|git):\/\/[^\s$.?#].[^\s]*$/gm;
+    if (!urlRegex.test(repositoryUrl)) {
+        logMessage(`Invalid repository URL: ${repositoryUrl}`, 'ERROR');
+        process.exit(1);
+    }
+    logMessage(`Repository URL '${repositoryUrl}' is valid.`);
+}
+
+// Function to read configuration file if exists
+function readConfigFile(configPath) {
+    if (fs.existsSync(configPath)) {
+        try {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            logMessage(`Configuration file '${configPath}' loaded successfully.`);
+            return config;
+        } catch (error) {
+            logMessage(`Failed to parse configuration file '${configPath}': ${error.message}`, 'ERROR');
+            process.exit(1);
+        }
+    } else {
+        logMessage(`Configuration file '${configPath}' not found. Proceeding with defaults.`, 'WARNING');
+        return {};
+    }
+}
+
+// Function to display system information
+function displaySystemInfo() {
+    logMessage(`Operating System: ${os.type()} ${os.release()} (${os.platform()})`);
+    logMessage(`CPU: ${os.cpus()[0].model}`);
+    logMessage(`Total Memory: ${(os.totalmem() / (1024 ** 3)).toFixed(2)} GB`);
+    logMessage(`Free Memory: ${(os.freemem() / (1024 ** 3)).toFixed(2)} GB`);
+    logMessage(`Home Directory: ${os.homedir()}`);
+    logMessage(`User: ${os.userInfo().username}`);
+    logMessage(`Uptime: ${os.uptime()} seconds`);
+}
+
+// Function to validate the repository path
+function validateRepositoryPath(repositoryPath) {
+    if (fs.existsSync(repositoryPath)) {
+        logMessage(`Directory '${repositoryPath}' already exists.`, 'WARNING');
+        rl.question('Do you want to overwrite it? (yes/no): ', (answer) => {
+            if (answer.toLowerCase() === 'yes') {
+                fs.rmSync(repositoryPath, { recursive: true, force: true });
+                logMessage(`Directory '${repositoryPath}' has been deleted.`);
+                createDirectory(repositoryPath);
+            } else {
+                logMessage('Operation aborted by the user.', 'WARNING');
+                process.exit(0);
+            }
+        });
+    } else {
+        logMessage(`Directory '${repositoryPath}' is available.`);
+        createDirectory(repositoryPath);
+    }
+}
+
+// Function to download and validate a file asynchronously
+function downloadFile(url, destination, expectedChecksum) {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(destination);
+        https.get(url, (response) => {
+            if (response.statusCode !== 200) {
+                logMessage(`Failed to download file. Status code: ${response.statusCode}`, 'ERROR');
+                return reject(new Error(`Download failed with status code ${response.statusCode}`));
+            }
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(() => {
+                    logMessage(`File downloaded to ${destination}`);
+                    validateChecksum(destination, expectedChecksum)
+                        .then(() => resolve())
+                        .catch((err) => reject(err));
+                });
+            });
+        }).on('error', (err) => {
+            logMessage(`Error downloading file: ${err.message}`, 'ERROR');
+            reject(err);
+        });
+    });
+}
+
+// Function to validate the checksum of a file
+function validateChecksum(filePath, expectedChecksum) {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('sha256');
+        const stream = fs.createReadStream(filePath);
+
+        stream.on('data', (data) => hash.update(data));
+        stream.on('end', () => {
+            const fileChecksum = hash.digest('hex');
+            if (fileChecksum === expectedChecksum) {
+                logMessage(`Checksum validation passed for file ${filePath}`);
+                resolve();
+            } else {
+                logMessage(`Checksum validation failed for file ${filePath}. Expected ${expectedChecksum}, but got ${fileChecksum}`, 'ERROR');
+                reject(new Error('Checksum validation failed'));
+            }
+        });
+        stream.on('error', (err) => {
+            logMessage(`Error reading file for checksum validation: ${err.message}`, 'ERROR');
+            reject(err);
+        });
+    });
+}
+
+// Function to save configuration to a file
+function saveConfigFile(configPath, config) {
+    try {
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        logMessage(`Configuration saved to ${configPath}`);
+    } catch (error) {
+        logMessage(`Failed to save configuration file '${configPath}': ${error.message}`, 'ERROR');
+    }
+}
+
+// Function to parse command-line arguments
+function parseCommandLineArgs() {
+    const args = process.argv.slice(2);
+    const config = {};
+
+    args.forEach(arg => {
+        const [key, value] = arg.split('=');
+        if (key && value) {
+            config[key] = value;
+            logMessage(`Command-line argument parsed: ${key}=${value}`);
+        } else {
+            logMessage(`Invalid command-line argument: ${arg}`, 'WARNING');
+        }
+    });
+
+    return config;
+}
+
+// Function to handle unexpected errors
+function handleUnexpectedErrors() {
+    process.on('uncaughtException', (error) => {
+        logMessage(`Uncaught Exception: ${error.message}`, 'ERROR');
+        process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        logMessage(`Unhandled Rejection: ${reason}`, 'ERROR');
+        process.exit(1);
+    });
+}
+
+// Function to display progress in percentages
+function displayProgress(percentage) {
+    process.stdout.write(`Progress: ${percentage}%\r`);
+    if (percentage >= 100) {
+        process.stdout.write('\n');
+    }
+}
+
+// Function to simulate a long-running task
+function longRunningTask(duration) {
+    return new Promise((resolve) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            displayProgress(progress);
+            if (progress >= 100) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, duration / 20);
+    });
+}
+
+// Function to get system's free disk space
+function checkDiskSpace() {
+    return new Promise((resolve, reject) => {
+        const disk = require('diskusage');
+        disk.check('/', (err, diskSpace) => {
+            if (err) {
+                logMessage(`Error checking disk space: ${err.message}`, 'ERROR');
+                return reject(err);
+            }
+            logMessage(`Free disk space: ${(diskSpace.free / (1024 ** 3)).toFixed(2)} GB`);
+            if (diskSpace.free < 2 * 1024 ** 3) {
+                logMessage('Warning: Low disk space. Less than 2 GB available.', 'WARNING');
+            }
+            resolve();
+        });
+    });
+}
+
+// Function to load external resources before executing main tasks
+function loadExternalResources() {
+    return new Promise((resolve) => {
+        logMessage('Loading external resources...');
+        setTimeout(() => {
+            logMessage('External resources loaded.');
+            resolve();
+        }, 3000);
+    });
+}
+
+// Function to set up environment before execution
+function setupEnvironment() {
+    logMessage('Setting up environment...');
+    process.env.NODE_ENV = 'production';
+    logMessage(`NODE_ENV set to ${process.env.NODE_ENV}`);
+    if (process.platform === 'win32') {
+        logMessage('Running on Windows platform.');
+        // Additional Windows-specific setup can go here
+    } else {
+        logMessage('Running on a Unix-like platform.');
+        // Additional Unix-like setup can go here
+    }
+}
+
+// Main execution function
+async function main() {
+    handleUnexpectedErrors();
+
+    const defaultConfig = {
+        dirName: 'Nimbus',
+        repoUrl: 'https://github.com/waveoa/nimbus-app.git',
+        logLevel: 'INFO',
+        expectedChecksum: 'abc1234567890defabc1234567890defabc1234567890defabc1234567890def',
+        downloadUrl: 'https://example.com/file.zip',
+        configFilePath: path.join(__dirname, 'config.json')
+    };
+
+    // Parse command-line arguments
+    const cmdLineConfig = parseCommandLineArgs();
+
+    // Load configuration from file or use defaults
+    const configPath = cmdLineConfig.configFilePath || defaultConfig.configFilePath;
+    const fileConfig = readConfigFile(configPath);
+    const config = { ...defaultConfig, ...fileConfig, ...cmdLineConfig };
+
+    // Set up the environment
+    setupEnvironment();
+
+    // Load external resources
+    await loadExternalResources();
+
+    // Display system information
+    displaySystemInfo();
+
+    // Check for free disk space
+    await checkDiskSpace();
+
+    // Validate the repository URL
+    validateRepositoryUrl(config.repoUrl);
+
+    // Check for any required environment variables
+    checkEnvironmentVariables('REPO_URL');
+
+    // Define the full path for the directory
+    const fullPath = path.join(__dirname, config.dirName);
+
+    // Validate the repository path and handle overwrite prompt if necessary
+    validateRepositoryPath(fullPath);
+
+    // Simulate a long-running task
+    await longRunningTask(2000);
+
+    // Clone the repository with retry mechanism
+    cloneRepository(config.repoUrl, fullPath);
+
+    // Download a file and validate its checksum
+    try {
+        await downloadFile(config.downloadUrl, path.join(fullPath, 'downloaded.zip'), config.expectedChecksum);
+    } catch (error) {
+        logMessage(`Failed to download or validate file: ${error.message}`, 'ERROR');
     }
 
-    if (stderr) {
-        console.error(`Error: ${stderr}`);
-        return;
-    }
+    // Save the updated configuration
+    saveConfigFile(configPath, config);
+}
 
-    console.log(`Output: ${stdout}`);
-    console.log('Nimbus repository has been cloned successfully!');
+// Display a loading message while the script runs
+function showLoadingIndicator() {
+    const loadingChars = ['|', '/', '-', '\\'];
+    let index = 0;
+    const interval = setInterval(() => {
+        process.stdout.write(`\r${loadingChars[index++]}`);
+        index %= loadingChars.length;
+    }, 100);
+    return () => clearInterval(interval);
+}
+
+// Start the main function with a loading indicator
+logMessage('Starting the script...');
+const stopLoading = showLoadingIndicator();
+main().then(() => {
+    stopLoading();
+    logMessage('Script finished.');
+}).catch(error => {
+    stopLoading();
+    logMessage(`Script encountered an error: ${error.message}`, 'ERROR');
 });
