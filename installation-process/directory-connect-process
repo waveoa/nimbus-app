@@ -2,30 +2,278 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Logger utility to manage logs
+const logger = {
+  info: (message) => console.log(`INFO: ${message}`),
+  error: (message) => console.error(`ERROR: ${message}`),
+  warn: (message) => console.warn(`WARN: ${message}`),
+};
+
+// Function to validate if the path is a directory
+function isDirectory(dirPath) {
+  return fs.existsSync(dirPath) && fs.lstatSync(dirPath).isDirectory();
+}
+
+// Function to list files in the specified directory
+function listFiles(dirPath) {
+  if (!isDirectory(dirPath)) {
+    logger.error(`The path ${dirPath} is not a valid directory.`);
+    return;
+  }
+  fs.readdir(dirPath, (err, files) => {
+    if (err) {
+      logger.error(`Error reading directory: ${err.message}`);
+      return;
+    }
+    logger.info(`Listing files in ${dirPath}:`);
+    files.forEach((file) => {
+      const fullPath = path.join(dirPath, file);
+      fs.lstat(fullPath, (err, stats) => {
+        if (err) {
+          logger.error(`Error getting stats for file: ${file}`);
+        } else {
+          logger.info(`${file} - ${stats.isDirectory() ? 'Directory' : 'File'}`);
+        }
+      });
+    });
+  });
+}
+
+// Function to copy a file
+function copyFile(sourceFile, destinationFile) {
+  if (!fs.existsSync(sourceFile)) {
+    logger.error(`Source file "${sourceFile}" does not exist.`);
+    return;
+  }
+  fs.copyFile(sourceFile, destinationFile, (err) => {
+    if (err) {
+      logger.error(`Failed to copy file: ${err.message}`);
+    } else {
+      logger.info(`File copied from ${sourceFile} to ${destinationFile}`);
+    }
+  });
+}
+
+// Function to create a new directory
+function createDirectory(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    logger.warn(`Directory "${dirPath}" already exists.`);
+    return;
+  }
+  fs.mkdir(dirPath, (err) => {
+    if (err) {
+      logger.error(`Failed to create directory: ${err.message}`);
+    } else {
+      logger.info(`Directory "${dirPath}" created successfully.`);
+    }
+  });
+}
+
+// Function to delete a file
+function deleteFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    logger.error(`File "${filePath}" does not exist.`);
+    return;
+  }
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      logger.error(`Failed to delete file: ${err.message}`);
+    } else {
+      logger.info(`File "${filePath}" deleted successfully.`);
+    }
+  });
+}
+
 // Function to change the directory to "Nimbus" and list its contents.
 function grabNimbus() {
   const targetDirectory = 'Nimbus';
 
   // Check if the target directory exists.
-  if (fs.existsSync(targetDirectory) && fs.lstatSync(targetDirectory).isDirectory()) {
+  if (isDirectory(targetDirectory)) {
     // Change the current working directory to "Nimbus"
     process.chdir(targetDirectory);
 
     // List all files and directories in the "Nimbus" directory.
-    fs.readdir('.', (err, files) => {
-      if (err) {
-        console.error(`Error reading directory: ${err.message}`);
-      } else {
-        console.log(`Contents of ${targetDirectory}:`);
-        files.forEach(file => {
-          console.log(file);
-        });
-      }
-    });
+    listFiles('.');
   } else {
-    console.error(`Directory "${targetDirectory}" does not exist.`);
+    logger.error(`Directory "${targetDirectory}" does not exist.`);
   }
 }
 
-// Execute the grabNimbus function.
-grabNimbus();
+// Function to traverse all directories within a root directory
+function traverseDirectories(rootDir, callback) {
+  if (!isDirectory(rootDir)) {
+    logger.error(`The root path "${rootDir}" is not a valid directory.`);
+    return;
+  }
+
+  fs.readdir(rootDir, (err, files) => {
+    if (err) {
+      logger.error(`Error reading directory "${rootDir}": ${err.message}`);
+      return;
+    }
+
+    files.forEach((file) => {
+      const fullPath = path.join(rootDir, file);
+      if (isDirectory(fullPath)) {
+        traverseDirectories(fullPath, callback);
+      } else {
+        callback(fullPath);
+      }
+    });
+  });
+}
+
+// Function to rename a file
+function renameFile(oldPath, newPath) {
+  if (!fs.existsSync(oldPath)) {
+    logger.error(`File "${oldPath}" does not exist.`);
+    return;
+  }
+  fs.rename(oldPath, newPath, (err) => {
+    if (err) {
+      logger.error(`Failed to rename file: ${err.message}`);
+    } else {
+      logger.info(`File renamed from "${oldPath}" to "${newPath}"`);
+    }
+  });
+}
+
+// Function to get file details
+function getFileDetails(filePath) {
+  if (!fs.existsSync(filePath)) {
+    logger.error(`File "${filePath}" does not exist.`);
+    return;
+  }
+  fs.stat(filePath, (err, stats) => {
+    if (err) {
+      logger.error(`Failed to get file details: ${err.message}`);
+    } else {
+      logger.info(`Details for file "${filePath}":`);
+      logger.info(`Size: ${stats.size} bytes`);
+      logger.info(`Created: ${stats.birthtime}`);
+      logger.info(`Modified: ${stats.mtime}`);
+    }
+  });
+}
+
+// Function to execute a shell command
+function executeCommand(command) {
+  exec(command, (err, stdout, stderr) => {
+    if (err) {
+      logger.error(`Error executing command "${command}": ${err.message}`);
+      return;
+    }
+    if (stderr) {
+      logger.warn(`Command "${command}" completed with warnings: ${stderr}`);
+    }
+    logger.info(`Command "${command}" output: ${stdout}`);
+  });
+}
+
+// Function to watch a directory for changes
+function watchDirectory(dirPath) {
+  if (!isDirectory(dirPath)) {
+    logger.error(`The path "${dirPath}" is not a valid directory.`);
+    return;
+  }
+  logger.info(`Watching directory "${dirPath}" for changes...`);
+  fs.watch(dirPath, (eventType, filename) => {
+    if (filename) {
+      logger.info(`Directory "${dirPath}" change detected: ${eventType} on ${filename}`);
+    } else {
+      logger.warn(`Directory "${dirPath}" change detected, but filename was not provided.`);
+    }
+  });
+}
+
+// Function to write data to a file
+function writeFile(filePath, data) {
+  fs.writeFile(filePath, data, (err) => {
+    if (err) {
+      logger.error(`Failed to write to file "${filePath}": ${err.message}`);
+    } else {
+      logger.info(`Data written to file "${filePath}" successfully.`);
+    }
+  });
+}
+
+// Function to read data from a file
+function readFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    logger.error(`File "${filePath}" does not exist.`);
+    return;
+  }
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      logger.error(`Failed to read file "${filePath}": ${err.message}`);
+    } else {
+      logger.info(`Contents of file "${filePath}":\n${data}`);
+    }
+  });
+}
+
+// Function to append data to a file
+function appendToFile(filePath, data) {
+  fs.appendFile(filePath, data, (err) => {
+    if (err) {
+      logger.error(`Failed to append to file "${filePath}": ${err.message}`);
+    } else {
+      logger.info(`Data appended to file "${filePath}" successfully.`);
+    }
+  });
+}
+
+// Function to demonstrate a sequence of operations in the "Nimbus" directory
+function demoNimbusOperations() {
+  grabNimbus();
+
+  const testFileName = 'testFile.txt';
+  const testData = 'This is a test data.';
+
+  // Writing to a file
+  writeFile(testFileName, testData);
+
+  // Reading from the file
+  readFile(testFileName);
+
+  // Appending to the file
+  appendToFile(testFileName, '\nAppended data.');
+
+  // Reading again to verify the append
+  readFile(testFileName);
+
+  // Getting file details
+  getFileDetails(testFileName);
+
+  // Copying the file
+  const copyFileName = 'copyOfTestFile.txt';
+  copyFile(testFileName, copyFileName);
+
+  // Renaming the copy
+  const renamedFileName = 'renamedTestFile.txt';
+  renameFile(copyFileName, renamedFileName);
+
+  // Deleting the renamed file
+  deleteFile(renamedFileName);
+
+  // Deleting the original test file
+  deleteFile(testFileName);
+}
+
+// Main function to start the demonstration
+function main() {
+  logger.info('Starting Nimbus operations demonstration...');
+  
+  // Initial demo of directory and file operations
+  demoNimbusOperations();
+
+  // Watching Nimbus directory for any changes
+  watchDirectory('Nimbus');
+
+  // Executing a shell command as part of the demo
+  executeCommand('echo "Nimbus operations completed."');
+}
+
+// Execute the main function
+main();
