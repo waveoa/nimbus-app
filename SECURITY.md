@@ -1,4 +1,4 @@
-# Nimbus Security Policy
+# Nimbus - Security Policy
 
 ## Overview
 
