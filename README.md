@@ -115,7 +115,7 @@ Once Nimbus is running, you can interact with it using various commands. Here ar
 - `/mute @user [duration]`: Mutes a user for a specified duration.
 - `/warn @user [reason]`: Issues a warning to a user.
 
-For a full list of commands, type `!help` in your server after Nimbus is set up.
+For a full list of commands, type `/help` in your server after Nimbus is set up.
 
 ## Contributing
 
