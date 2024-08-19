@@ -1,4 +1,4 @@
-# Nimbus - Discord Bot
+# Nimbus - Discord Application
 
 Welcome to **Nimbus**, the ultimate Discord bot designed to enhance community management, moderation, and automation. Nimbus provides server owners and moderators with a powerful tool to streamline operations and keep their communities running smoothly.
 
